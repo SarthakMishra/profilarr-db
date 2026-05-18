@@ -94,6 +94,18 @@ def fetch_upstream(refresh: bool) -> str:
 
 SECTION_HEADER_RE = re.compile(r"^-- ([A-Z][A-Z0-9 _-]+)$")
 
+# Matches an INSERT into custom_format_conditions, capturing the CF name (g1),
+# the literal prefix up to and including ", " before arr_type (g2), the arr_type
+# value (g3), and the trailing suffix from the closing quote onward (g4).
+# Used to retag arr_type='radarr' to 'all' when a CF is used in a Sonarr
+# profile but upstream provides no sonarr/all conditions for it (without the
+# retag, Profilarr sends an empty `specifications` array to Sonarr and the
+# sync 400s with "Specifications must not be empty").
+CONDITION_INSERT_RE = re.compile(
+    r"^(INSERT INTO custom_format_conditions \([^)]+\) VALUES "
+    r"\('([^']+)', '[^']+', '[^']+', )'([a-z]+)'(.*)$"
+)
+
 
 def vendor_upstream(sql: str) -> str:
     """Walk the upstream file and drop the profile-related sections."""
@@ -121,6 +133,42 @@ def vendor_upstream(sql: str) -> str:
             out.append(line)
         i += 1
     return "\n".join(out).rstrip() + "\n"
+
+
+def sonarr_referenced_cfs(profiles: list[dict]) -> set[str]:
+    """CF names (PCD-canonical, post-remap) referenced by any Sonarr profile."""
+    out: set[str] = set()
+    for p in profiles:
+        if p["_arr"] != "sonarr":
+            continue
+        for fmt in p.get("formatItems", []):
+            out.add(CF_NAME_REMAP.get(fmt["name"], fmt["name"]))
+    return out
+
+
+def cfs_needing_sonarr_promotion(sql: str, sonarr_cfs: set[str]) -> set[str]:
+    """CFs that are Sonarr-referenced but have only 'radarr' conditions upstream."""
+    by_cf: dict[str, set[str]] = {}
+    for line in sql.splitlines():
+        m = CONDITION_INSERT_RE.match(line)
+        if m:
+            by_cf.setdefault(m.group(2), set()).add(m.group(3))
+    return {cf for cf in sonarr_cfs if by_cf.get(cf) == {"radarr"}}
+
+
+def promote_radarr_to_all(sql: str, cfs: set[str]) -> tuple[str, int]:
+    """Rewrite arr_type='radarr' to 'all' on conditions for the given CFs."""
+    if not cfs:
+        return sql, 0
+    out: list[str] = []
+    promoted = 0
+    for line in sql.splitlines():
+        m = CONDITION_INSERT_RE.match(line)
+        if m and m.group(2) in cfs and m.group(3) == "radarr":
+            line = f"{m.group(1)}'all'{m.group(4)}"
+            promoted += 1
+        out.append(line)
+    return "\n".join(out) + "\n", promoted
 
 
 # ----- profile rendering -----------------------------------------------------
@@ -404,6 +452,24 @@ def main() -> int:
 
     raw = fetch_upstream(args.refresh)
     vendored = vendor_upstream(raw)
+
+    profiles = load_profiles()
+    assign_pcd_names(profiles)
+    print("profiles:", file=sys.stderr)
+    for p in profiles:
+        print(f"  [{p['_arr']:6}] {p['name']!r:30}  ->  {p['_pcd_name']!r}", file=sys.stderr)
+
+    sonarr_cfs = sonarr_referenced_cfs(profiles)
+    to_promote = cfs_needing_sonarr_promotion(vendored, sonarr_cfs)
+    vendored, n = promote_radarr_to_all(vendored, to_promote)
+    if to_promote:
+        print(
+            f"\npromoted {n} condition(s) on {len(to_promote)} CF(s) "
+            f"from arr_type='radarr' to 'all' (Sonarr-referenced, no sonarr conditions upstream):\n  "
+            + ", ".join(sorted(to_promote)),
+            file=sys.stderr,
+        )
+
     header = (
         "-- ============================================================================\n"
         f"-- VENDORED FROM {TRASH_PCD_URL}\n"
@@ -412,12 +478,6 @@ def main() -> int:
     )
     OPS.mkdir(exist_ok=True)
     (OPS / "1.initial.sql").write_text(header + vendored)
-
-    profiles = load_profiles()
-    assign_pcd_names(profiles)
-    print("profiles:", file=sys.stderr)
-    for p in profiles:
-        print(f"  [{p['_arr']:6}] {p['name']!r:30}  ->  {p['_pcd_name']!r}", file=sys.stderr)
 
     (OPS / "2.profiles.sql").write_text(render_profiles_sql(profiles))
 
