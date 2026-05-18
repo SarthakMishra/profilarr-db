@@ -1,0 +1,78 @@
+name: Sync upstream trash-pcd
+
+# Re-runs scripts/regen-ops.py against the latest upstream
+# (Dictionarry-Hub/trash-pcd). If the resulting ops/*.sql differs from main
+# AND the rebuilt DB compiles cleanly under FK enforcement, opens a PR.
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC. Adjust if you want a different cadence.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sqlite3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends sqlite3
+
+      - name: Regenerate ops/ from upstream
+        run: python3 scripts/regen-ops.py --refresh
+
+      - name: Validate generated SQL builds cleanly
+        run: |
+          set -euo pipefail
+          rm -f /tmp/pcd-validate.db
+          {
+            echo "PRAGMA foreign_keys=ON;"
+            cat scripts/.cache/0.schema.sql
+            cat scripts/.cache/1.languages.sql
+            cat scripts/.cache/2.qualities.sql
+            cat scripts/.cache/3.quality-group-member-position.sql
+            cat ops/1.initial.sql
+            cat ops/2.profiles.sql
+          } | sqlite3 /tmp/pcd-validate.db 2> /tmp/sqlite.err
+          if [ -s /tmp/sqlite.err ]; then
+            echo "::error::SQLite reported errors:"
+            cat /tmp/sqlite.err
+            exit 1
+          fi
+          echo "Row counts:"
+          sqlite3 /tmp/pcd-validate.db "
+            SELECT 'quality_profiles', COUNT(*) FROM quality_profiles
+            UNION ALL SELECT 'custom_formats', COUNT(*) FROM custom_formats
+            UNION ALL SELECT 'regular_expressions', COUNT(*) FROM regular_expressions;
+          "
+
+      - name: Open PR if upstream changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: sync upstream trash-pcd"
+          title: "Sync upstream trash-pcd"
+          body: |
+            Automated sync of vendored CFs from
+            [`Dictionarry-Hub/trash-pcd`](https://github.com/Dictionarry-Hub/trash-pcd).
+
+            Triggered by: `${{ github.event_name }}`
+
+            SQL validated locally under SQLite with FK enforcement on.
+
+            Merge once you've reviewed the diff.
+          branch: sync/trash-pcd
+          delete-branch: true
+          add-paths: |
+            ops/1.initial.sql
+            ops/2.profiles.sql
