@@ -1,1 +1,4 @@
 user_ops/*
+.env
+exports/
+scripts/.cache/
