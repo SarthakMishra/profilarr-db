@@ -8,12 +8,14 @@ ops/2.profiles.sql. Re-run this script to pick up upstream CF updates.
 
 Inputs:
   - https://raw.githubusercontent.com/Dictionarry-Hub/trash-pcd/main/ops/1.initial.sql
-  - exports/radarr/qualityprofile.json
-  - exports/sonarr/qualityprofile.json
+  - exports/{radarr,sonarr}/qualityprofile.json
+  - exports/{radarr,sonarr}/config-naming.json
+  - exports/{radarr,sonarr}/config-mediamanagement.json
+  - tweaks/delay-profiles.json (no arr API source for delay profiles)
 
 Outputs:
-  - ops/1.initial.sql  (vendored: TAGS, REGEX, CFs, conditions, naming, qdefs)
-  - ops/2.profiles.sql (your profiles + groups + scores + languages)
+  - ops/1.initial.sql  (vendored: TAGS, REGEX, CFs, conditions, naming presets, qdefs)
+  - ops/2.profiles.sql (local: profiles + naming + media settings + delay profiles)
 
 Usage:
   python3 scripts/regen-ops.py            # uses cached upstream if present
@@ -32,7 +34,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXPORTS = REPO_ROOT / "exports"
 OPS = REPO_ROOT / "ops"
+TWEAKS = REPO_ROOT / "tweaks"
 CACHE = REPO_ROOT / "scripts" / ".cache"
+
+# Single name reused across radarr_naming, sonarr_naming, radarr_media_settings,
+# sonarr_media_settings — Profilarr keys these tables by name and we have one
+# active configuration per arr.
+LOCAL_NAME = "Local"
 
 TRASH_PCD_URL = (
     "https://raw.githubusercontent.com/Dictionarry-Hub/trash-pcd/main/ops/1.initial.sql"
@@ -229,6 +237,85 @@ def emit_profile_rows(p: dict, buckets: dict[str, list[str]]) -> None:
         )
 
 
+def sql_int_or_null(v) -> str:
+    return "NULL" if v is None else str(int(v))
+
+
+def load_json(path: Path) -> dict | list | None:
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def emit_naming_rows(buckets: dict[str, list[str]]) -> None:
+    """radarr_naming + sonarr_naming rows from exports/*/config-naming.json."""
+    r = load_json(EXPORTS / "radarr" / "config-naming.json")
+    if r:
+        buckets["radarr_naming"].append(
+            "INSERT INTO radarr_naming "
+            "(name, rename, movie_format, movie_folder_format, "
+            "replace_illegal_characters, colon_replacement_format) VALUES ("
+            f"{sql_str(LOCAL_NAME)}, {sql_bool(r.get('renameMovies'))}, "
+            f"{sql_str(r['standardMovieFormat'])}, "
+            f"{sql_str(r['movieFolderFormat'])}, "
+            f"{sql_bool(r.get('replaceIllegalCharacters'))}, "
+            f"{sql_str(r.get('colonReplacementFormat', 'smart'))});"
+        )
+    s = load_json(EXPORTS / "sonarr" / "config-naming.json")
+    if s:
+        custom_colon = s.get("customColonReplacementFormat") or None
+        buckets["sonarr_naming"].append(
+            "INSERT INTO sonarr_naming "
+            "(name, rename, standard_episode_format, daily_episode_format, "
+            "anime_episode_format, series_folder_format, season_folder_format, "
+            "replace_illegal_characters, colon_replacement_format, "
+            "custom_colon_replacement_format, multi_episode_style) VALUES ("
+            f"{sql_str(LOCAL_NAME)}, {sql_bool(s.get('renameEpisodes'))}, "
+            f"{sql_str(s['standardEpisodeFormat'])}, "
+            f"{sql_str(s['dailyEpisodeFormat'])}, "
+            f"{sql_str(s['animeEpisodeFormat'])}, "
+            f"{sql_str(s['seriesFolderFormat'])}, "
+            f"{sql_str(s['seasonFolderFormat'])}, "
+            f"{sql_bool(s.get('replaceIllegalCharacters'))}, "
+            f"{int(s.get('colonReplacementFormat', 4))}, "
+            f"{sql_str(custom_colon)}, "
+            f"{int(s.get('multiEpisodeStyle', 5))});"
+        )
+
+
+def emit_media_settings_rows(buckets: dict[str, list[str]]) -> None:
+    """*_media_settings rows from exports/*/config-mediamanagement.json."""
+    for arr in ("radarr", "sonarr"):
+        cfg = load_json(EXPORTS / arr / "config-mediamanagement.json")
+        if not cfg:
+            continue
+        buckets[f"{arr}_media_settings"].append(
+            f"INSERT INTO {arr}_media_settings "
+            "(name, propers_repacks, enable_media_info) VALUES ("
+            f"{sql_str(LOCAL_NAME)}, "
+            f"{sql_str(cfg.get('downloadPropersAndRepacks', 'doNotPrefer'))}, "
+            f"{sql_bool(cfg.get('enableMediaInfo'))});"
+        )
+
+
+def emit_delay_profile_rows(buckets: dict[str, list[str]]) -> None:
+    """delay_profiles rows from tweaks/delay-profiles.json (no arr API source)."""
+    profiles = load_json(TWEAKS / "delay-profiles.json")
+    if not profiles:
+        return
+    for d in profiles:
+        buckets["delay_profiles"].append(
+            "INSERT INTO delay_profiles "
+            "(name, preferred_protocol, usenet_delay, torrent_delay, "
+            "bypass_if_highest_quality, bypass_if_above_custom_format_score, "
+            "minimum_custom_format_score) VALUES ("
+            f"{sql_str(d['name'])}, {sql_str(d['preferred_protocol'])}, "
+            f"{sql_int_or_null(d.get('usenet_delay'))}, "
+            f"{sql_int_or_null(d.get('torrent_delay'))}, "
+            f"{int(d.get('bypass_if_highest_quality', 0))}, "
+            f"{int(d.get('bypass_if_above_custom_format_score', 0))}, "
+            f"{sql_int_or_null(d.get('minimum_custom_format_score'))});"
+        )
+
+
 def render_profiles_sql(profiles: list[dict]) -> str:
     buckets: dict[str, list[str]] = {
         "quality_profiles": [],
@@ -237,9 +324,17 @@ def render_profiles_sql(profiles: list[dict]) -> str:
         "quality_profile_qualities": [],
         "quality_profile_custom_formats": [],
         "quality_profile_languages": [],
+        "radarr_naming": [],
+        "sonarr_naming": [],
+        "radarr_media_settings": [],
+        "sonarr_media_settings": [],
+        "delay_profiles": [],
     }
     for p in profiles:
         emit_profile_rows(p, buckets)
+    emit_naming_rows(buckets)
+    emit_media_settings_rows(buckets)
+    emit_delay_profile_rows(buckets)
 
     section_headers = {
         "quality_profiles": "QUALITY PROFILES",
@@ -248,11 +343,17 @@ def render_profiles_sql(profiles: list[dict]) -> str:
         "quality_profile_qualities": "QUALITY PROFILE QUALITIES",
         "quality_profile_custom_formats": "QUALITY PROFILE CUSTOM FORMATS",
         "quality_profile_languages": "QUALITY PROFILE LANGUAGES",
+        "radarr_naming": "RADARR NAMING",
+        "sonarr_naming": "SONARR NAMING",
+        "radarr_media_settings": "RADARR MEDIA SETTINGS",
+        "sonarr_media_settings": "SONARR MEDIA SETTINGS",
+        "delay_profiles": "DELAY PROFILES",
     }
 
     out: list[str] = []
     out.append("-- Generated by scripts/regen-ops.py — do not edit by hand.")
-    out.append("-- Source: exports/{radarr,sonarr}/qualityprofile.json")
+    out.append("-- Sources: exports/{radarr,sonarr}/{qualityprofile,config-naming,config-mediamanagement}.json")
+    out.append("--          tweaks/delay-profiles.json")
     out.append("")
     for key, header in section_headers.items():
         rows = buckets[key]

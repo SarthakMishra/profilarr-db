@@ -1,0 +1,11 @@
+[
+  {
+    "name": "Local Torrent",
+    "preferred_protocol": "only_torrent",
+    "torrent_delay": 60,
+    "usenet_delay": null,
+    "bypass_if_highest_quality": 0,
+    "bypass_if_above_custom_format_score": 1,
+    "minimum_custom_format_score": 2500
+  }
+]
