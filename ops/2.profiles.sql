@@ -6,14 +6,14 @@
 -- QUALITY PROFILES
 -- ============================================================================
 
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('HD-1080p [Radarr]', NULL, 1, 100, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Ultra-HD [Radarr]', NULL, 1, 100, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Hindi-HD-1080p [Radarr]', NULL, 1, 100, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Any-Lang-HD-1080p [Radarr]', NULL, 1, 100, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Any [Sonarr]', NULL, 1, 0, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('HD-1080p [Sonarr]', NULL, 1, 100, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Anime [Sonarr]', NULL, 1, 100, 10000, 1);
-INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Ultra-HD [Sonarr]', NULL, 1, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('HD-1080p [Radarr]', NULL, 0, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Ultra-HD [Radarr]', NULL, 0, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Hindi-HD-1080p [Radarr]', NULL, 0, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Any-Lang-HD-1080p [Radarr]', NULL, 0, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Any [Sonarr]', NULL, 0, 0, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('HD-1080p [Sonarr]', NULL, 0, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Anime [Sonarr]', NULL, 0, 100, 10000, 1);
+INSERT INTO quality_profiles (name, description, upgrades_allowed, minimum_custom_format_score, upgrade_until_score, upgrade_score_increment) VALUES ('Ultra-HD [Sonarr]', NULL, 0, 100, 10000, 1);
 
 -- ============================================================================
 -- QUALITY GROUPS
