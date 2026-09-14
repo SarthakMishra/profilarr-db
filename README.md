@@ -52,6 +52,33 @@ replace existing downloads.
 
 Run the regression check with `python3 scripts/test_hevc_policy.py`.
 
+## Upstream sync
+
+The GitHub workflow runs on Mondays at 06:00 UTC and can be started manually.
+It applies all numbered upstream SQL migrations using the schema version in
+`pcd.json`, then opens or updates `sync/trash-pcd` for review. Only upstream
+formats, regexes, tags, conditions and naming presets are vendored;
+`ops/2.profiles.sql` stays unchanged. Known upstream format renames are mapped
+to the existing local names so profile scores and references remain intact.
+
+To run the same sync from a clean checkout, with Git and Python 3 installed:
+
+```sh
+python3 scripts/regen-ops.py --refresh --upstream-only
+python3 scripts/test_sync_upstream.py
+python3 scripts/test_hevc_policy.py
+```
+
+No Arr credentials, exports or pre-existing cache are needed. Schema changes
+and missing format references fail validation before either SQL file is
+overwritten. New upstream renames may require updating `UPSTREAM_CF_NAMES`.
+Generated IDs and timestamps are omitted to keep repeat runs stable.
+
+Repository Actions settings must allow GitHub Actions to create pull requests.
+The keepalive job re-enables the schedule through GitHub's API on each scheduled
+or manual run, preventing inactivity from disabling it. Failed syncs remain
+visible in Actions; upstream changes are never automatically merged.
+
 ## Learn More
 
 - [Profilarr Documentation](https://github.com/Dictionarry-Hub/profilarr)
