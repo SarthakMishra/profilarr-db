@@ -42,7 +42,7 @@ def main():
     # Re-exporting the new settings must not shrink them again; remux is excluded.
     with TemporaryDirectory() as tmp:
         regen["emit_quality_definitions_rows"].__globals__["EXPORTS"] = Path(tmp)
-        for minimum, preferred in ((12.5, 40), (9, 28)):
+        for minimum, preferred in ((12.5, 40), (9, 28), (6, 28)):
             path = Path(tmp) / "radarr/qualitydefinition.json"
             path.parent.mkdir(exist_ok=True)
             path.write_text(json.dumps([
@@ -55,7 +55,7 @@ def main():
             regen["emit_quality_definitions_rows"](buckets)
             db.executescript("\n".join(buckets["radarr_quality_definitions"]))
             assert db.execute("SELECT * FROM radarr_quality_definitions").fetchall() == [
-                ("Local", "WEBDL-1080p", 9, 70, 28),
+                ("Local", "WEBDL-1080p", 6, 70, 28),
                 ("Local", "Remux-1080p", 100, 120, 110),
             ]
             db.execute("DELETE FROM radarr_quality_definitions")

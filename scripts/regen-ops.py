@@ -50,37 +50,38 @@ LOCAL_NAME = "Local"
 # for the existing -10,000 rejection scores, including Sonarr season packs.
 CODEC_SCORES = {"x264": 1000, "x265": 3000}
 
-# Absolute (minimum, preferred) MB/min targets, about 30% below the original
-# HD encode settings. Fixed targets prevent repeated export/sync shrinkage.
+# Absolute (minimum, preferred) MB/min targets. Preferred sizes are about 30%
+# below the original HD settings; floors are about 50% below the originals.
+# Fixed targets prevent repeated export/sync shrinkage.
 # ponytail: size only approximates visual quality; tune per quality after sampling releases.
 HEVC_SIZES = {
     "radarr": {
-        "HDTV-720p": (12, 14),
-        "WEBDL-720p": (9, 11),
-        "WEBRip-720p": (9, 11),
-        "Bluray-720p": (18, 21),
-        "HDTV-1080p": (24, 28),
-        "WEBDL-1080p": (9, 28),
-        "WEBRip-1080p": (9, 28),
-        "Bluray-1080p": (36, 42),
-        "HDTV-2160p": (60, 70),
-        "WEBDL-2160p": (24, 35),
-        "WEBRip-2160p": (24, 35),
-        "Bluray-2160p": (71, 77),
+        "HDTV-720p": (8, 14),
+        "WEBDL-720p": (6, 11),
+        "WEBRip-720p": (6, 11),
+        "Bluray-720p": (13, 21),
+        "HDTV-1080p": (17, 28),
+        "WEBDL-1080p": (6, 28),
+        "WEBRip-1080p": (6, 28),
+        "Bluray-1080p": (25, 42),
+        "HDTV-2160p": (42, 70),
+        "WEBDL-2160p": (17, 35),
+        "WEBRip-2160p": (17, 35),
+        "Bluray-2160p": (50, 77),
     },
     "sonarr": {
-        "HDTV-720p": (11, 14),
-        "WEBDL-720p": (11, 14),
-        "WEBRip-720p": (11, 14),
-        "Bluray-720p": (11, 14),
-        "HDTV-1080p": (21, 28),
-        "WEBDL-1080p": (11, 14),
-        "WEBRip-1080p": (11, 14),
-        "Bluray-1080p": (11, 18),
-        "HDTV-2160p": (35, 39),
-        "WEBDL-2160p": (28, 32),
-        "WEBRip-2160p": (28, 32),
-        "Bluray-2160p": (56, 60),
+        "HDTV-720p": (8, 14),
+        "WEBDL-720p": (8, 14),
+        "WEBRip-720p": (8, 14),
+        "Bluray-720p": (8, 14),
+        "HDTV-1080p": (15, 28),
+        "WEBDL-1080p": (8, 14),
+        "WEBRip-1080p": (8, 14),
+        "Bluray-1080p": (8, 18),
+        "HDTV-2160p": (24, 39),
+        "WEBDL-2160p": (20, 32),
+        "WEBRip-2160p": (20, 32),
+        "Bluray-2160p": (39, 60),
     },
 }
 

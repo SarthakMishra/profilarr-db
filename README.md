@@ -25,14 +25,16 @@ ordering and Sonarr's season-pack preference still apply. Sonarr's x264
 condition requires a codec title match so HEVC releases do not receive both
 codec bonuses.
 
-Minimum and preferred sizes for 720p, 1080p and 2160p HDTV, WEB and Blu-ray
-encodes are about 30% lower. Examples in MB/min:
+For 720p, 1080p and 2160p HDTV, WEB and Blu-ray encodes, preferred sizes are
+about 30% below the original settings. Minimum floors have been lowered another
+30% from the first HEVC policy, putting them about 50% below the originals.
+Examples show original → current values in MB/min:
 
 | Quality | Radarr minimum / preferred | Sonarr minimum / preferred |
 | --- | --- | --- |
-| WEB 1080p | 12 / 40 → 9 / 28 | 15 / 20 → 11 / 14 |
-| Blu-ray 1080p | 51 / 60 → 36 / 42 | 15 / 25 → 11 / 18 |
-| WEB 2160p | 34 / 50 → 24 / 35 | 40 / 45 → 28 / 32 |
+| WEB 1080p | 12 / 40 → 6 / 28 | 15 / 20 → 8 / 14 |
+| Blu-ray 1080p | 51 / 60 → 25 / 42 | 15 / 25 → 8 / 18 |
+| WEB 2160p | 34 / 50 → 17 / 35 | 40 / 45 → 20 / 32 |
 
 These are starting targets, not a guarantee of equal image quality. The
 [x265 documentation](https://x265.readthedocs.io/en/stable/cli.html#cmdoption-crf)
