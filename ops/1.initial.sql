@@ -4306,7 +4306,7 @@ INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, 
 INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('Wrong Language', 'Wrong Language', 'language', 'radarr', 1, 1);
 INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x264', 'Not Remux', 'source', 'sonarr', 1, 1);
 INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x264', 'Remux', 'quality_modifier', 'radarr', 1, 1);
-INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x264', 'x|h264', 'release_title', 'radarr', 0, 1);
+INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x264', 'x|h264', 'release_title', 'all', 0, 1);
 INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x265 (HD)', 'Not 2160p', 'resolution', 'radarr', 1, 1);
 INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x265 (HD)', 'x265/HEVC', 'release_title', 'radarr', 0, 1);
 INSERT INTO custom_format_conditions (custom_format_name, name, type, arr_type, negate, required) VALUES ('x265 (no HDR/DV)', 'Not 2160p', 'resolution', 'radarr', 1, 1);

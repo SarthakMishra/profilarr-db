@@ -43,6 +43,44 @@ CACHE = REPO_ROOT / "scripts" / ".cache"
 # active configuration per arr.
 LOCAL_NAME = "Local"
 
+# A 2,000-point HEVC advantage outweighs most group bonuses while leaving room
+# for the existing -10,000 rejection scores, including Sonarr season packs.
+CODEC_SCORES = {"x264": 1000, "x265": 3000}
+
+# Absolute (minimum, preferred) MB/min targets, about 30% below the original
+# HD encode settings. Fixed targets prevent repeated export/sync shrinkage.
+# ponytail: size only approximates visual quality; tune per quality after sampling releases.
+HEVC_SIZES = {
+    "radarr": {
+        "HDTV-720p": (12, 14),
+        "WEBDL-720p": (9, 11),
+        "WEBRip-720p": (9, 11),
+        "Bluray-720p": (18, 21),
+        "HDTV-1080p": (24, 28),
+        "WEBDL-1080p": (9, 28),
+        "WEBRip-1080p": (9, 28),
+        "Bluray-1080p": (36, 42),
+        "HDTV-2160p": (60, 70),
+        "WEBDL-2160p": (24, 35),
+        "WEBRip-2160p": (24, 35),
+        "Bluray-2160p": (71, 77),
+    },
+    "sonarr": {
+        "HDTV-720p": (11, 14),
+        "WEBDL-720p": (11, 14),
+        "WEBRip-720p": (11, 14),
+        "Bluray-720p": (11, 14),
+        "HDTV-1080p": (21, 28),
+        "WEBDL-1080p": (11, 14),
+        "WEBRip-1080p": (11, 14),
+        "Bluray-1080p": (11, 18),
+        "HDTV-2160p": (35, 39),
+        "WEBDL-2160p": (28, 32),
+        "WEBRip-2160p": (28, 32),
+        "Bluray-2160p": (56, 60),
+    },
+}
+
 TRASH_PCD_URL = (
     "https://raw.githubusercontent.com/Dictionarry-Hub/trash-pcd/main/ops/1.initial.sql"
 )
@@ -132,7 +170,12 @@ def vendor_upstream(sql: str) -> str:
         if keep:
             out.append(line)
         i += 1
-    return "\n".join(out).rstrip() + "\n"
+    # Upstream's Sonarr x264 condition only excludes remux. Share the codec
+    # title match too, otherwise every non-remux receives the x264 bonus.
+    return ("\n".join(out).rstrip() + "\n").replace(
+        "'x264', 'x|h264', 'release_title', 'radarr'",
+        "'x264', 'x|h264', 'release_title', 'all'",
+    )
 
 
 def sonarr_referenced_cfs(profiles: list[dict]) -> set[str]:
@@ -270,7 +313,7 @@ def emit_profile_rows(p: dict, buckets: dict[str, list[str]]) -> None:
             "INSERT INTO quality_profile_custom_formats "
             "(quality_profile_name, custom_format_name, arr_type, score) VALUES ("
             f"{sql_str(name)}, {sql_str(cf_name)}, {sql_str(arr)}, "
-            f"{int(fmt['score'])});"
+            f"{int(CODEC_SCORES.get(cf_name, fmt['score']))});"
         )
 
     lang = p.get("language")
@@ -303,12 +346,17 @@ def emit_quality_definitions_rows(buckets: dict[str, list[str]]) -> None:
             continue
         for d in defs:
             qname = canon_quality(arr, d["quality"]["name"])
+            min_size, preferred_size = HEVC_SIZES[arr].get(
+                qname, (round(d["minSize"]), round(d["preferredSize"]))
+            )
+            if not 0 <= min_size <= preferred_size <= round(d["maxSize"]):
+                raise ValueError(f"{arr} {qname}: expected min <= preferred <= max")
             buckets[f"{arr}_quality_definitions"].append(
                 f"INSERT INTO {arr}_quality_definitions "
                 "(name, quality_name, min_size, max_size, preferred_size) VALUES ("
                 f"{sql_str(LOCAL_NAME)}, {sql_str(qname)}, "
-                f"{round(d['minSize'])}, {round(d['maxSize'])}, "
-                f"{round(d['preferredSize'])});"
+                f"{min_size}, {round(d['maxSize'])}, "
+                f"{preferred_size});"
             )
 
 
